@@ -1,10 +1,7 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:  # Solo ejecuta cuando des clic en el botón "Run workflow"
 
 jobs:
   build-test-deploy:
@@ -42,7 +39,7 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
 
-    # Construcción y push de la imagen con versión
+    # Construcción y push de la imagen Docker
     - name: Construir y subir imagen Docker
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER }}
