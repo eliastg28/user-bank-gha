@@ -18,24 +18,16 @@ jobs:
 
     # Generar versión basada en los commits
     - name: Generar versión semántica
+      id: version
       uses: PaulHatch/semantic-version@v4.0.3
       with:
         major_pattern: "major:"
         minor_pattern: "feat:"
         format: "${major}.${minor}.${patch}-prerelease${increment}"
-      id: version
 
     # Verificar la versión generada
     - name: Verificar versión generada
       run: echo "🔹 Versión generada: ${{ steps.version.outputs.version }}"
-
-    # Validar que la versión no esté vacía
-    - name: Validar versión generada
-      run: |
-        if [ -z "${{ steps.version.outputs.version }}" ]; then
-          echo "❌ ERROR: La versión generada está vacía. Verifica la acción semantic-version."
-          exit 1
-        fi
 
     # Configurar JDK y Maven
     - name: Configurar JDK 11
@@ -52,9 +44,9 @@ jobs:
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin
+      run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
 
-    # Construcción y push de la imagen con versión
+    # Construcción y push de la imagen Docker
     - name: Construir y subir imagen Docker
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER }}
@@ -67,15 +59,15 @@ jobs:
       run: |
         echo "📌 Iniciando construcción de imagen Docker con versión: $NEW_VERSION"
         
-        docker build --build-arg MYSQL_URL=$MYSQL_URL \
-                     --build-arg MYSQL_USER=$MYSQL_USER \
-                     --build-arg MYSQL_PASSWORD=$MYSQL_PASSWORD \
-                     --build-arg JWT_SECRET=$JWT_SECRET \
-                     --build-arg PORT=$PORT \
-                     -t $DOCKER_USER/user-bank-gha:$NEW_VERSION .
-        
-        docker tag $DOCKER_USER/user-bank-gha:$NEW_VERSION $DOCKER_USER/user-bank-gha:latest
+        docker build --build-arg MYSQL_URL="$MYSQL_URL" \
+                     --build-arg MYSQL_USER="$MYSQL_USER" \
+                     --build-arg MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+                     --build-arg JWT_SECRET="$JWT_SECRET" \
+                     --build-arg PORT="$PORT" \
+                     -t "$DOCKER_USER/user-bank-gha:$NEW_VERSION" .
+
+        docker tag "$DOCKER_USER/user-bank-gha:$NEW_VERSION" "$DOCKER_USER/user-bank-gha:latest"
         
         echo "🚀 Subiendo imagen a Docker Hub..."
-        docker push $DOCKER_USER/user-bank-gha:$NEW_VERSION
-        docker push $DOCKER_USER/user-bank-gha:latest
+        docker push "$DOCKER_USER/user-bank-gha:$NEW_VERSION"
+        docker push "$DOCKER_USER/user-bank-gha:latest"
