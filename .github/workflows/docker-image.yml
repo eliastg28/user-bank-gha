@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout código
+    - name: Checkout código
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
 
-    # Generar versión basada en los commits
-    - name: Generar versión semántica
+    # Generar versión basada en los commits
+    - name: Generar versión semántica
       uses: PaulHatch/semantic-version@v4.0.3
       with:
         major_pattern: "major:"
@@ -25,17 +25,19 @@ jobs:
         format: "${major}.${minor}.${patch}-prerelease${increment}"
       id: version
 
-    - name: Verificar variables Docker
+    # Cargar variables de entorno desde Secrets
+    - name: Cargar variables de entorno
+      env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        MYSQL_URL: ${{ secrets.MYSQL_URL }}
+        MYSQL_USER: ${{ secrets.MYSQL_USER }}
+        PORT: ${{ secrets.PORT }}
       run: |
         echo "DOCKER_USER: $DOCKER_USER"
-        echo "DOCKER_PASSWORD: [SECRETO OCULTO]"
         echo "NEW_VERSION: ${{ steps.version.outputs.version }}"
         echo "MYSQL_URL: $MYSQL_URL"
         echo "MYSQL_USER: $MYSQL_USER"
-        echo "MYSQL_PASSWORD: [SECRETO OCULTO]"
-        echo "JWT_SECRET: [SECRETO OCULTO]"
         echo "PORT: $PORT"
-
 
     # Configurar JDK y Maven
     - name: Configurar JDK 11
@@ -47,15 +49,17 @@ jobs:
     - name: Construir JAR con Maven
       run: mvn clean package -DskipTests
 
+    # Docker Login
     - name: Docker Login
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin
+      run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
 
-    # Construcción y push de la imagen con versión
+    # Construcción y push de la imagen con versión
     - name: Construir y subir imagen Docker
       env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
         NEW_VERSION: ${{ steps.version.outputs.version }}
         MYSQL_URL: ${{ secrets.MYSQL_URL }}
         MYSQL_USER: ${{ secrets.MYSQL_USER }}
@@ -63,13 +67,17 @@ jobs:
         JWT_SECRET: ${{ secrets.JWT_SECRET }}
         PORT: ${{ secrets.PORT }}
       run: |
-        docker build --build-arg MYSQL_URL=$MYSQL_URL \
-                     --build-arg MYSQL_USER=$MYSQL_USER \
-                     --build-arg MYSQL_PASSWORD=$MYSQL_PASSWORD \
-                     --build-arg JWT_SECRET=$JWT_SECRET \
-                     --build-arg PORT=$PORT \
-                     -t $DOCKER_USER/user-bank-gha:$NEW_VERSION .
-                     
-        docker build -t $DOCKER_USER/user-bank-gha:latest .
-        docker push $DOCKER_USER/user-bank-gha:$NEW_VERSION
-        docker push $DOCKER_USER/user-bank-gha:latest
+        echo "📌 Construyendo imagen Docker: $DOCKER_USER/user-bank-gha:$NEW_VERSION"
+        
+        docker build --build-arg MYSQL_URL="$MYSQL_URL" \
+                     --build-arg MYSQL_USER="$MYSQL_USER" \
+                     --build-arg MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+                     --build-arg JWT_SECRET="$JWT_SECRET" \
+                     --build-arg PORT="$PORT" \
+                     -t "$DOCKER_USER/user-bank-gha:$NEW_VERSION" .
+
+        docker tag "$DOCKER_USER/user-bank-gha:$NEW_VERSION" "$DOCKER_USER/user-bank-gha:latest"
+
+        echo "🚀 Subiendo imágenes a Docker Hub..."
+        docker push "$DOCKER_USER/user-bank-gha:$NEW_VERSION"
+        docker push "$DOCKER_USER/user-bank-gha:latest"
