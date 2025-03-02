@@ -27,7 +27,7 @@ jobs:
 
     # Verificar la versión generada
     - name: Verificar versión generada
-      run: echo "🔹 Versión generada: ${{ steps.version.outputs.version }}"
+      run: echo "Versión generada: ${{ steps.version.outputs.version }}"
 
     # Configurar JDK y Maven
     - name: Configurar JDK 11
