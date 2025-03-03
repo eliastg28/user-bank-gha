@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-bank
+  labels:
+    app: user-bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-bank
+  template:
+    metadata:
+      labels:
+        app: user-bank
+    spec:
+      containers:
+        - name: user-bank
+          image: docker.io/${DOCKER_USER}/user-bank-gha:latest # Se actualizará automáticamente
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_URL
+              value: "jdbc:mysql://${MYSQL_URL}"
+            - name: MYSQL_USER
+              value: "${MYSQL_USER}"
+            - name: MYSQL_PASSWORD
+              value: "${MYSQL_PASSWORD}"
+            - name: JWT_SECRET
+              value: "${JWT_SECRET}"
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-bank-service
+spec:
+  selector:
+    app: user-bank
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
