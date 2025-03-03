@@ -1,0 +1,90 @@
+name: CI/CD Pipeline
+
+on:
+  workflow_dispatch:  # Permite ejecutar manualmente el workflow
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    # Generar versión basada en los commits
+    - name: 🔢 Generar versión semántica
+      uses: PaulHatch/semantic-version@v4.0.3
+      with:
+        major_pattern: "major:"
+        minor_pattern: "feat:"
+        format: "${major}.${minor}.${patch}-prerelease${increment}"
+      id: version
+
+    # Configurar JDK y Maven
+    - name: ☕ Configurar JDK 11
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: 🏗️ Construir JAR con Maven
+      run: mvn clean package -DskipTests
+
+    # Docker Login
+    - name: 🔑 Docker Login
+      env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+
+    # Construcción y push de la imagen Docker
+    - name: 🐳 Construir y subir imagen Docker
+      env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        NEW_VERSION: ${{ steps.version.outputs.version }}
+        MYSQL_URL: ${{ secrets.MYSQL_URL }}
+        MYSQL_USER: ${{ secrets.MYSQL_USER }}
+        MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        PORT: ${{ secrets.PORT }}
+      run: |
+        echo "📌 Construyendo imagen Docker: $DOCKER_USER/user-bank-gha:$NEW_VERSION"
+        
+        docker build --build-arg MYSQL_URL="$MYSQL_URL" \
+                     --build-arg MYSQL_USER="$MYSQL_USER" \
+                     --build-arg MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+                     --build-arg JWT_SECRET="$JWT_SECRET" \
+                     --build-arg PORT="$PORT" \
+                     -t "$DOCKER_USER/user-bank-gha:$NEW_VERSION" .
+
+        docker tag "$DOCKER_USER/user-bank-gha:$NEW_VERSION" "$DOCKER_USER/user-bank-gha:latest"
+
+        echo "🚀 Subiendo imágenes a Docker Hub..."
+        docker push "$DOCKER_USER/user-bank-gha:$NEW_VERSION"
+        docker push "$DOCKER_USER/user-bank-gha:latest"
+
+  deploy:
+    needs: build-test-deploy  # Espera a que termine el job anterior
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v3
+
+    - name: 🔑 Iniciar sesión en Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 🔗 Conectar a AKS
+      run: az aks get-credentials --resource-group aks-cluster-rg --name aks-demo-2025 --overwrite-existing
+
+    - name: 🚀 Desplegar en Kubernetes
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/hpa.yaml
+
+    - name: 📊 Verificar estado de los pods
+      run: kubectl get pods -o wide
