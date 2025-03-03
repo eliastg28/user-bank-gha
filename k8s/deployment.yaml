@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: user-bank
-          image: docker.io/${DOCKER_USER}/user-bank-gha:latest # Se actualizará automáticamente
+          image: docker.io/tgelias/user-bank-gha:latest # Se actualizará automáticamente
           ports:
             - containerPort: 8080
           env:
