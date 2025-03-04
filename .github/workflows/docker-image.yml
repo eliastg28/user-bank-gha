@@ -92,7 +92,8 @@ jobs:
           --from-literal=MYSQL_URL="${{ secrets.MYSQL_URL }}" \
           --from-literal=MYSQL_USER="${{ secrets.MYSQL_USER }}" \
           --from-literal=MYSQL_PASSWORD="${{ secrets.MYSQL_PASSWORD }}" \
-          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}"
+          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          --from-literal=PORT="${{ secrets.PORT }}"         
 
         kubectl create secret generic docker-credentials \
           --from-literal=DOCKER_USER="${{ secrets.DOCKER_USER }}"
