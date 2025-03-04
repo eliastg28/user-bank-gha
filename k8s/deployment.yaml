@@ -40,6 +40,11 @@ spec:
                 secretKeyRef:
                   name: user-bank-secrets
                   key: JWT_SECRET
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: user-bank-secrets
+                  key: PORT
           resources:
             limits:
               memory: "512Mi"
