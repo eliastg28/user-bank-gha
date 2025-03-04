@@ -16,32 +16,31 @@ spec:
     spec:
       containers:
         - name: user-bank
-          image: docker.io/tgelias/user-bank-gha:latest # Se actualizará automáticamente
+          image: docker.io/${DOCKER_USER}/user-bank-gha:latest
           ports:
             - containerPort: 8080
           env:
             - name: MYSQL_URL
-              value: "jdbc:mysql://${MYSQL_URL}"
+              valueFrom:
+                secretKeyRef:
+                  name: user-bank-secrets
+                  key: MYSQL_URL
             - name: MYSQL_USER
-              value: "${MYSQL_USER}"
+              valueFrom:
+                secretKeyRef:
+                  name: user-bank-secrets
+                  key: MYSQL_USER
             - name: MYSQL_PASSWORD
-              value: "${MYSQL_PASSWORD}"
+              valueFrom:
+                secretKeyRef:
+                  name: user-bank-secrets
+                  key: MYSQL_PASSWORD
             - name: JWT_SECRET
-              value: "${JWT_SECRET}"
+              valueFrom:
+                secretKeyRef:
+                  name: user-bank-secrets
+                  key: JWT_SECRET
           resources:
             limits:
               memory: "512Mi"
               cpu: "500m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: user-bank-service
-spec:
-  selector:
-    app: user-bank
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-  type: LoadBalancer
