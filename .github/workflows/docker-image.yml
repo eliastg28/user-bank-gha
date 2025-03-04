@@ -81,6 +81,24 @@ jobs:
     - name: 🔗 Conectar a AKS
       run: az aks get-credentials --resource-group aks-cluster-rg --name aks-demo-2025 --overwrite-existing
 
+    - name: 🔑 Crear o actualizar Secrets en Kubernetes
+      run: |
+        # Eliminar secretos si ya existen para evitar conflictos
+        kubectl delete secret user-bank-secrets --ignore-not-found
+        kubectl delete secret docker-credentials --ignore-not-found
+
+        # Crear Secrets en Kubernetes
+        kubectl create secret generic user-bank-secrets \
+          --from-literal=MYSQL_URL="${{ secrets.MYSQL_URL }}" \
+          --from-literal=MYSQL_USER="${{ secrets.MYSQL_USER }}" \
+          --from-literal=MYSQL_PASSWORD="${{ secrets.MYSQL_PASSWORD }}" \
+          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}"
+
+        kubectl create secret generic docker-credentials \
+          --from-literal=DOCKER_USER="${{ secrets.DOCKER_USER }}"
+
+        echo "✅ Secrets creados exitosamente en Kubernetes."
+
     - name: 🚀 Desplegar en Kubernetes
       run: |
         kubectl apply -f k8s/deployment.yaml
